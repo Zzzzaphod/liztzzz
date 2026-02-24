@@ -24,10 +24,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
 import com.google.firebase.database.database
-import com.google.firebase.Firebase
+import zzz.projects.liztzzz.data.Lizt
+import zzz.projects.liztzzz.data.LiztItem
 import zzz.projects.liztzzz.ui.theme.LiztzzTheme
 
 class MainActivity : ComponentActivity() {
@@ -62,17 +64,20 @@ fun MainScreen(auth: FirebaseAuth) {
         LaunchedEffect(user) {
             // Access a Realtime Database instance
             val database = Firebase.database
-            val myRef = database.getReference("users")
+            val myRef = database.getReference("liztz")
 
-            // Create a new user with a first and last name
-            val userData = hashMapOf(
-                "first" to "Ada",
-                "last" to "Lovelace",
-                "born" to 1815
+            // Create a sample Lizt object
+            val sampleLizt = Lizt(
+                hasSuggests = true,
+                isDeletable = true,
+                liztName = "My Sample Lizt",
+                liztSuggested = listOf(LiztItem(itemName = "Suggested Item 1")),
+                liztUnchecked = listOf(LiztItem(itemName = "Unchecked Item 1")),
+                liztChecked = listOf(LiztItem(itemName = "Checked Item 1", isChecked = true))
             )
 
             // Add a new document with a generated ID
-            myRef.push().setValue(userData).addOnCompleteListener { task ->
+            myRef.push().setValue(sampleLizt).addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     val successMsg = "Data saved successfully."
                     Log.d("MainActivity", successMsg)
