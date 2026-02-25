@@ -78,6 +78,8 @@ fun MainScreen(auth: FirebaseAuth, viewModel: LiztViewModel) {
     }
 }
 
+
+
 @Composable
 fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
     val lizts by viewModel.lizts.collectAsState()
