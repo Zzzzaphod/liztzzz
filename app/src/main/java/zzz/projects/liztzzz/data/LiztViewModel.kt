@@ -74,4 +74,12 @@ class LiztViewModel : ViewModel() {
             liztRef.child(liztUid).child("liztUnchecked").setValue(updatedUnchecked)
         }
     }
+
+    fun addLiztItem(liztUid: String, itemName: String) {
+        val lizt = _lizts.value.find { it.uid == liztUid } ?: return
+        val newItem = LiztItem(itemName = itemName)
+        val updatedUnchecked = lizt.liztUnchecked.toMutableList()
+        updatedUnchecked.add(newItem)
+        liztRef.child(liztUid).child("liztUnchecked").setValue(updatedUnchecked)
+    }
 }

@@ -7,8 +7,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -19,9 +20,11 @@ import zzz.projects.liztzzz.data.Lizt
 fun LiztDetailScreen(
     lizt: Lizt,
     onBack: () -> Unit,
-    onToggleChecked: (Int, Boolean) -> Unit
+    onToggleChecked: (Int, Boolean) -> Unit,
+    onAddItem: (String) -> Unit
 ) {
     BackHandler(onBack = onBack)
+    var newItemName by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -33,6 +36,37 @@ fun LiztDetailScreen(
                     }
                 }
             )
+        },
+        bottomBar = {
+            BottomAppBar(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.height(IntrinsicSize.Min)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = newItemName,
+                        onValueChange = { newItemName = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Neues Element...") },
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(
+                        onClick = {
+                            if (newItemName.isNotBlank()) {
+                                onAddItem(newItemName)
+                                newItemName = ""
+                            }
+                        },
+                        enabled = newItemName.isNotBlank()
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Item")
+                    }
+                }
+            }
         }
     ) { innerPadding ->
         Row(
