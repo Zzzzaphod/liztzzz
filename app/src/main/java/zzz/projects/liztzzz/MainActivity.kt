@@ -70,6 +70,15 @@ fun MainScreen(auth: FirebaseAuth, viewModel: LiztViewModel) {
                     },
                     onToggleSuggests = {
                         viewModel.toggleHasSuggests(selectedLizt.uid)
+                    },
+                    onSuggestedClick = { item ->
+                        viewModel.copySuggestedToUnchecked(selectedLizt.uid, item)
+                    },
+                    onSuggestedLongClick = { item ->
+                        viewModel.deleteSuggestedItem(selectedLizt.uid, item)
+                    },
+                    onUncheckedLongClick = { item ->
+                        viewModel.copyUncheckedToSuggested(selectedLizt.uid, item)
                     }
                 )
             } else {

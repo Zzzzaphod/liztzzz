@@ -1,7 +1,8 @@
 package zzz.projects.liztzzz.ui.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,8 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import zzz.projects.liztzzz.data.Lizt
+import zzz.projects.liztzzz.data.LiztItem
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun LiztDetailScreen(
     lizt: Lizt,
@@ -24,11 +26,17 @@ fun LiztDetailScreen(
     onToggleChecked: (Int, Boolean) -> Unit,
     onAddItem: (String) -> Unit,
     onDeleteChecked: () -> Unit,
-    onToggleSuggests: () -> Unit
+    onToggleSuggests: () -> Unit,
+    onSuggestedClick: (LiztItem) -> Unit,
+    onSuggestedLongClick: (LiztItem) -> Unit,
+    onUncheckedLongClick: (LiztItem) -> Unit
 ) {
     BackHandler(onBack = onBack)
     var newItemName by remember { mutableStateOf("") }
     var showMenu by remember { mutableStateOf(false) }
+    
+    var itemToDelete by remember { mutableStateOf<LiztItem?>(null) }
+    var itemToSuggest by remember { mutableStateOf<LiztItem?>(null) }
 
     Scaffold(
         topBar = {
@@ -116,7 +124,10 @@ fun LiztDetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .animateItem()
-                                .clickable { onToggleChecked(originalIndex, !item.isChecked) }
+                                .combinedClickable(
+                                    onClick = { onToggleChecked(originalIndex, !item.isChecked) },
+                                    onLongClick = { itemToSuggest = item }
+                                )
                                 .padding(8.dp)
                         ) {
                             Checkbox(
@@ -145,6 +156,10 @@ fun LiztDetailScreen(
                                 item.itemName,
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .combinedClickable(
+                                        onClick = { onSuggestedClick(item) },
+                                        onLongClick = { itemToDelete = item }
+                                    )
                                     .padding(16.dp)
                             )
                         }
@@ -152,5 +167,49 @@ fun LiztDetailScreen(
                 }
             }
         }
+    }
+
+    // Lösch-Bestätigung für Vorschläge
+    itemToDelete?.let { item ->
+        AlertDialog(
+            onDismissRequest = { itemToDelete = null },
+            title = { Text("Vorschlag löschen") },
+            text = { Text("Möchten Sie '${item.itemName}' wirklich aus den Vorschlägen löschen?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onSuggestedLongClick(item)
+                    itemToDelete = null
+                }) {
+                    Text("Löschen")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { itemToDelete = null }) {
+                    Text("Abbrechen")
+                }
+            }
+        )
+    }
+
+    // Übernahme-Bestätigung für Vorschläge
+    itemToSuggest?.let { item ->
+        AlertDialog(
+            onDismissRequest = { itemToSuggest = null },
+            title = { Text("In Vorschläge übernehmen") },
+            text = { Text("Möchten Sie '${item.itemName}' in die Vorschlagsliste übernehmen?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onUncheckedLongClick(item)
+                    itemToSuggest = null
+                }) {
+                    Text("Übernehmen")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { itemToSuggest = null }) {
+                    Text("Abbrechen")
+                }
+            }
+        )
     }
 }

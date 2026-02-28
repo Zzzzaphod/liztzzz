@@ -77,10 +77,12 @@ class LiztViewModel : ViewModel() {
 
     fun addLiztItem(liztUid: String, itemName: String) {
         val lizt = _lizts.value.find { it.uid == liztUid } ?: return
-        val newItem = LiztItem(itemName = itemName)
+        val trimmedName = itemName.trim()
         val updatedUnchecked = lizt.liztUnchecked.toMutableList()
-        updatedUnchecked.add(newItem)
-        liztRef.child(liztUid).child("liztUnchecked").setValue(updatedUnchecked)
+        if (updatedUnchecked.none { it.itemName.trim().equals(trimmedName, ignoreCase = true) }) {
+            updatedUnchecked.add(LiztItem(itemName = trimmedName))
+            liztRef.child(liztUid).child("liztUnchecked").setValue(updatedUnchecked)
+        }
     }
 
     fun deleteCheckedItems(liztUid: String) {
@@ -92,5 +94,33 @@ class LiztViewModel : ViewModel() {
     fun toggleHasSuggests(liztUid: String) {
         val lizt = _lizts.value.find { it.uid == liztUid } ?: return
         liztRef.child(liztUid).child("hasSuggests").setValue(!lizt.hasSuggests)
+    }
+
+    fun copySuggestedToUnchecked(liztUid: String, item: LiztItem) {
+        val lizt = _lizts.value.find { it.uid == liztUid } ?: return
+        val trimmedName = item.itemName.trim()
+        val updatedUnchecked = lizt.liztUnchecked.toMutableList()
+        
+        if (updatedUnchecked.none { it.itemName.trim().equals(trimmedName, ignoreCase = true) }) {
+            updatedUnchecked.add(item.copy(itemName = trimmedName, isChecked = false))
+            liztRef.child(liztUid).child("liztUnchecked").setValue(updatedUnchecked)
+        }
+    }
+
+    fun deleteSuggestedItem(liztUid: String, item: LiztItem) {
+        val lizt = _lizts.value.find { it.uid == liztUid } ?: return
+        val updatedSuggested = lizt.liztSuggested.filter { it.itemName.trim() != item.itemName.trim() }
+        liztRef.child(liztUid).child("liztSuggested").setValue(updatedSuggested)
+    }
+
+    fun copyUncheckedToSuggested(liztUid: String, item: LiztItem) {
+        val lizt = _lizts.value.find { it.uid == liztUid } ?: return
+        val trimmedName = item.itemName.trim()
+        val updatedSuggested = lizt.liztSuggested.toMutableList()
+        
+        if (updatedSuggested.none { it.itemName.trim().equals(trimmedName, ignoreCase = true) }) {
+            updatedSuggested.add(item.copy(itemName = trimmedName, isChecked = false, isSuggest = true))
+            liztRef.child(liztUid).child("liztSuggested").setValue(updatedSuggested)
+        }
     }
 }
