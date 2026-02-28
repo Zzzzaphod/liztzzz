@@ -6,35 +6,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -46,6 +21,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.zIndex
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
@@ -54,6 +30,7 @@ import zzz.projects.liztzzz.data.LiztViewModel
 import zzz.projects.liztzzz.ui.theme.LiztzzTheme
 import kotlin.math.roundToInt
 
+// Hier geht's los
 class MainActivity : ComponentActivity() {
 
     private val viewModel: LiztViewModel by viewModels()
@@ -98,9 +75,11 @@ fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     
     val gridState = rememberLazyGridState()
+    // Stable reference to the current list for the gesture detector
+    val currentOrderedLizts by rememberUpdatedState(orderedLizts)
 
     LaunchedEffect(lizts) {
-        if (draggedLizt == null) { // Only update if not currently dragging
+        if (draggedLizt == null) {
             orderedLizts = lizts
         }
     }
@@ -116,7 +95,7 @@ fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             Column {
-                Button(onClick = onSignOut) {
+                Button(onClick = onSignOut, modifier = Modifier.padding(8.dp)) {
                     Text("Sign Out")
                 }
                 LazyVerticalGrid(
@@ -132,19 +111,17 @@ fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
                             isBeingDragged = isBeingDragged,
                             modifier = Modifier
                                 .graphicsLayer {
-                                    // Original tile is invisible while dragging
+                                    // Original bleibt unsichtbar solange draggedLizt gesetzt ist
                                     alpha = if (isBeingDragged) 0f else 1f
                                 }
-                                .pointerInput(orderedLizts) {
+                                .pointerInput(Unit) { // Geste wird bei Listenänderung NICHT neu gestartet
                                     detectDragGesturesAfterLongPress(
                                         onDragStart = { _ ->
                                             draggedLizt = lizt
                                             dragOffset = Offset.Zero
                                         },
                                         onDragEnd = {
-                                            if (orderedLizts != lizts) { // Check if order actually changed
-                                                viewModel.updateOrder(orderedLizts)
-                                            }
+                                            viewModel.updateOrder(currentOrderedLizts)
                                             draggedLizt = null
                                             dragOffset = Offset.Zero
                                         },
@@ -157,32 +134,34 @@ fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
                                             dragOffset += dragAmount
 
                                             val currentDragged = draggedLizt ?: return@detectDragGesturesAfterLongPress
-                                            val currentDraggedIndex = orderedLizts.indexOf(currentDragged)
+                                            val list = currentOrderedLizts
+                                            val currentDraggedIndex = list.indexOfFirst { it.uid == currentDragged.uid }
+                                            if (currentDraggedIndex == -1) return@detectDragGesturesAfterLongPress
 
                                             val draggedItemInfo = gridState.layoutInfo.visibleItemsInfo.find { it.key == currentDragged.uid } ?: return@detectDragGesturesAfterLongPress
                                             
-                                            // Center of the ghost relative to grid
+                                            // Mittelpunkt des Ghosts relativ zum Grid
                                             val ghostCenter = Offset(
                                                 x = draggedItemInfo.offset.x + draggedItemInfo.size.width / 2f + dragOffset.x,
                                                 y = draggedItemInfo.offset.y + draggedItemInfo.size.height / 2f + dragOffset.y
                                             )
 
-                                            // Hit test to find the item under the ghost center
+                                            // Hit-Test: Welches Element liegt unter dem Ghost-Zentrum?
                                             val targetItem = gridState.layoutInfo.visibleItemsInfo.find { item ->
                                                 ghostCenter.x in item.offset.x.toFloat()..(item.offset.x.toFloat() + item.size.width) &&
                                                 ghostCenter.y in item.offset.y.toFloat()..(item.offset.y.toFloat() + item.size.height)
                                             }
 
                                             if (targetItem != null && targetItem.key != currentDragged.uid) {
-                                                val targetIndex = orderedLizts.indexOfFirst { it.uid == targetItem.key }
+                                                val targetIndex = list.indexOfFirst { it.uid == targetItem.key }
                                                 if (targetIndex != -1) {
-                                                    // Adjust dragOffset to compensate for the change in original position
+                                                    // Offset kompensieren, damit der Ghost nicht springt wenn das Original den Slot wechselt
                                                     val oldOffset = draggedItemInfo.offset
                                                     val targetOffset = targetItem.offset
                                                     
                                                     dragOffset += Offset((oldOffset.x - targetOffset.x).toFloat(), (oldOffset.y - targetOffset.y).toFloat())
 
-                                                    val mutableLizts = orderedLizts.toMutableList()
+                                                    val mutableLizts = list.toMutableList()
                                                     mutableLizts.removeAt(currentDraggedIndex)
                                                     mutableLizts.add(targetIndex, currentDragged)
                                                     orderedLizts = mutableLizts
@@ -196,7 +175,7 @@ fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
                 }
             }
 
-            // Ghost overlay
+            // Ghost Overlay (Bleibt aktiv bis draggedLizt null wird)
             draggedLizt?.let { lizt ->
                 val itemInfo = gridState.layoutInfo.visibleItemsInfo.find { it.key == lizt.uid }
                 if (itemInfo != null) {
@@ -211,6 +190,7 @@ fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
                             }
                             .width(with(density) { itemInfo.size.width.toDp() })
                             .height(with(density) { itemInfo.size.height.toDp() })
+                            .zIndex(1f) // Ghost immer ganz oben
                             .graphicsLayer {
                                 alpha = 0.7f
                                 scaleX = 1.1f
@@ -325,7 +305,7 @@ fun LoginScreen(auth: FirebaseAuth, onLoginSuccess: () -> Unit) {
                 } else {
                     statusMessage = "Please enter email and password."
                 }
-            }) {
+            }, modifier = Modifier.padding(top = 16.dp)) {
                 Text("Sign In")
             }
             Button(onClick = {
@@ -342,14 +322,13 @@ fun LoginScreen(auth: FirebaseAuth, onLoginSuccess: () -> Unit) {
                 } else {
                     statusMessage = "Please enter email and password."
                 }
-            }) {
+            }, modifier = Modifier.padding(top = 8.dp)) {
                 Text("Sign Up")
             }
-            Text(text = statusMessage)
+            Text(text = statusMessage, modifier = Modifier.padding(top = 16.dp))
         }
     }
 }
-
 
 @Preview(showBackground = true)
 @Composable
