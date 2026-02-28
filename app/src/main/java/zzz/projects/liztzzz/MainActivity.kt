@@ -7,13 +7,17 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -33,16 +37,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.auth
 import zzz.projects.liztzzz.data.Lizt
 import zzz.projects.liztzzz.data.LiztViewModel
 import zzz.projects.liztzzz.ui.theme.LiztzzTheme
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
 
@@ -51,7 +61,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val auth = FirebaseAuth.getInstance()
+        val auth = Firebase.auth
 
         enableEdgeToEdge()
         setContent {
@@ -78,13 +88,15 @@ fun MainScreen(auth: FirebaseAuth, viewModel: LiztViewModel) {
     }
 }
 
-
-
 @Composable
 fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
     val lizts by viewModel.lizts.collectAsState()
     var orderedLizts by remember { mutableStateOf<List<Lizt>>(emptyList()) }
+    
+    // Drag state
     var draggedLizt by remember { mutableStateOf<Lizt?>(null) }
+    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    
     val gridState = rememberLazyGridState()
 
     LaunchedEffect(lizts) {
@@ -102,51 +114,112 @@ fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
             }
         }
     ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding)) {
-            Button(onClick = onSignOut) {
-                Text("Sign Out")
-            }
-            LazyVerticalGrid(
-                state = gridState,
-                columns = GridCells.Adaptive(minSize = 128.dp),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = innerPadding
-            ) {
-                items(orderedLizts, key = { it.uid }) { lizt ->
-                    LiztCard(
-                        lizt = lizt,
-                        isBeingDragged = lizt.uid == draggedLizt?.uid,
-                        modifier = Modifier.pointerInput(Unit) {
-                            detectDragGesturesAfterLongPress(
-                                onDragStart = { draggedLizt = lizt },
-                                onDragEnd = {
-                                    if (orderedLizts != lizts) { // Check if order actually changed
-                                        viewModel.updateOrder(orderedLizts)
-                                    }
-                                    draggedLizt = null
-                                },
-                                onDragCancel = { draggedLizt = null },
-                                onDrag = { change, _ ->
-                                    change.consume()
-                                    val currentDragged = draggedLizt ?: return@detectDragGesturesAfterLongPress
-                                    val currentDraggedIndex = orderedLizts.indexOf(currentDragged)
-
-                                    val targetItem = gridState.layoutInfo.visibleItemsInfo.find { item ->
-                                        change.position.x in item.offset.x.toFloat()..(item.offset.x.toFloat() + item.size.width) &&
-                                                change.position.y in item.offset.y.toFloat()..(item.offset.y.toFloat() + item.size.height)
-                                    }
-
-                                    if (targetItem != null && targetItem.index != currentDraggedIndex) {
-                                        val from = currentDraggedIndex
-                                        val to = targetItem.index
-                                        orderedLizts = orderedLizts.toMutableList().apply {
-                                            add(to, removeAt(from))
-                                        }
-                                    }
+        Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+            Column {
+                Button(onClick = onSignOut) {
+                    Text("Sign Out")
+                }
+                LazyVerticalGrid(
+                    state = gridState,
+                    columns = GridCells.Adaptive(minSize = 128.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(8.dp)
+                ) {
+                    items(orderedLizts, key = { it.uid }) { lizt ->
+                        val isBeingDragged = lizt.uid == draggedLizt?.uid
+                        LiztCard(
+                            lizt = lizt,
+                            isBeingDragged = isBeingDragged,
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    // Original tile is invisible while dragging
+                                    alpha = if (isBeingDragged) 0f else 1f
                                 }
-                            )
-                        }
-                    )
+                                .pointerInput(orderedLizts) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = { _ ->
+                                            draggedLizt = lizt
+                                            dragOffset = Offset.Zero
+                                        },
+                                        onDragEnd = {
+                                            if (orderedLizts != lizts) { // Check if order actually changed
+                                                viewModel.updateOrder(orderedLizts)
+                                            }
+                                            draggedLizt = null
+                                            dragOffset = Offset.Zero
+                                        },
+                                        onDragCancel = {
+                                            draggedLizt = null
+                                            dragOffset = Offset.Zero
+                                        },
+                                        onDrag = { change, dragAmount ->
+                                            change.consume()
+                                            dragOffset += dragAmount
+
+                                            val currentDragged = draggedLizt ?: return@detectDragGesturesAfterLongPress
+                                            val currentDraggedIndex = orderedLizts.indexOf(currentDragged)
+
+                                            val draggedItemInfo = gridState.layoutInfo.visibleItemsInfo.find { it.key == currentDragged.uid } ?: return@detectDragGesturesAfterLongPress
+                                            
+                                            // Center of the ghost relative to grid
+                                            val ghostCenter = Offset(
+                                                x = draggedItemInfo.offset.x + draggedItemInfo.size.width / 2f + dragOffset.x,
+                                                y = draggedItemInfo.offset.y + draggedItemInfo.size.height / 2f + dragOffset.y
+                                            )
+
+                                            // Hit test to find the item under the ghost center
+                                            val targetItem = gridState.layoutInfo.visibleItemsInfo.find { item ->
+                                                ghostCenter.x in item.offset.x.toFloat()..(item.offset.x.toFloat() + item.size.width) &&
+                                                ghostCenter.y in item.offset.y.toFloat()..(item.offset.y.toFloat() + item.size.height)
+                                            }
+
+                                            if (targetItem != null && targetItem.key != currentDragged.uid) {
+                                                val targetIndex = orderedLizts.indexOfFirst { it.uid == targetItem.key }
+                                                if (targetIndex != -1) {
+                                                    // Adjust dragOffset to compensate for the change in original position
+                                                    val oldOffset = draggedItemInfo.offset
+                                                    val targetOffset = targetItem.offset
+                                                    
+                                                    dragOffset += Offset((oldOffset.x - targetOffset.x).toFloat(), (oldOffset.y - targetOffset.y).toFloat())
+
+                                                    val mutableLizts = orderedLizts.toMutableList()
+                                                    mutableLizts.removeAt(currentDraggedIndex)
+                                                    mutableLizts.add(targetIndex, currentDragged)
+                                                    orderedLizts = mutableLizts
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
+                        )
+                    }
+                }
+            }
+
+            // Ghost overlay
+            draggedLizt?.let { lizt ->
+                val itemInfo = gridState.layoutInfo.visibleItemsInfo.find { it.key == lizt.uid }
+                if (itemInfo != null) {
+                    val density = LocalDensity.current
+                    Box(
+                        modifier = Modifier
+                            .offset {
+                                IntOffset(
+                                    (itemInfo.offset.x + dragOffset.x).roundToInt(),
+                                    (itemInfo.offset.y + dragOffset.y).roundToInt()
+                                )
+                            }
+                            .width(with(density) { itemInfo.size.width.toDp() })
+                            .height(with(density) { itemInfo.size.height.toDp() })
+                            .graphicsLayer {
+                                alpha = 0.7f
+                                scaleX = 1.1f
+                                scaleY = 1.1f
+                                shadowElevation = 12.dp.toPx()
+                            }
+                    ) {
+                        LiztCard(lizt = lizt, isBeingDragged = false)
+                    }
                 }
             }
         }
@@ -169,12 +242,6 @@ fun LiztCard(lizt: Lizt, isBeingDragged: Boolean, modifier: Modifier = Modifier)
         modifier = modifier
             .padding(8.dp)
             .fillMaxWidth()
-            .graphicsLayer {
-                alpha = if (isBeingDragged) 0.8f else 1f
-                shadowElevation = if (isBeingDragged) 8f else 0f
-                scaleX = if (isBeingDragged) 1.05f else 1f
-                scaleY = if (isBeingDragged) 1.05f else 1f
-            }
     ) {
         Text(text = lizt.liztName, modifier = Modifier.padding(16.dp))
     }
