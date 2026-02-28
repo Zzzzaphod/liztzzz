@@ -5,14 +5,13 @@ import com.google.firebase.database.PropertyName
 
 data class Lizt(
     @get:Exclude
-    var uid: String = "", // To hold the unique key from Firebase
-    var position: Int = 0,
+    var uid: String = "", // Hält den Schlüssel (z.B. die Positionsnummer "0", "1"...)
     var hasSuggests: Boolean = false,
     @get:PropertyName("isDeletable")
-    val isDeletable: Boolean = false,
+    var isDeletable: Boolean = false,
     var liztName: String = "",
-    val liztSuggested: List<LiztItem> = emptyList(),
-    val liztUnchecked: List<LiztItem> = emptyList(),
-    val liztChecked: List<LiztItem> = emptyList(),
-    val showUnchecked: Boolean = true
+    var liztSuggested: List<LiztItem> = emptyList(),
+    var liztUnchecked: List<LiztItem> = emptyList(),
+    var liztChecked: List<LiztItem> = emptyList(),
+    var showUnchecked: Boolean = true
 )

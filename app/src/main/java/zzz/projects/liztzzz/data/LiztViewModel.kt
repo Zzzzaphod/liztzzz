@@ -19,26 +19,27 @@ class LiztViewModel : ViewModel() {
     val lizts = _lizts.asStateFlow()
 
     private val database: FirebaseDatabase = FirebaseDatabase.getInstance()
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-
-    private lateinit var liztRef: DatabaseReference
+    
+    // Die Referenz zeigt nun direkt auf den Root-Knoten "liztz"
+    private val liztRef: DatabaseReference = database.getReference("liztz")
 
     init {
-        auth.currentUser?.uid?.let {
-            liztRef = database.getReference("liztz").child(it).child("liztz")
-            loadLizts()
-        }
+        loadLizts()
     }
 
     private fun loadLizts() {
         viewModelScope.launch {
-            liztRef.orderByChild("position").addValueEventListener(object : ValueEventListener {
+            // Wir laden die Daten direkt vom Root-Knoten "liztz"
+            liztRef.addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val lizts = snapshot.children.mapNotNull {
-                        val lizt = it.getValue(Lizt::class.java)
-                        lizt?.uid = it.key ?: ""
-                        lizt
-                    }
+                    val lizts = snapshot.children
+                        .filter { it.key?.toIntOrNull() != null } // Nur numerische Positions-Schlüssel
+                        .sortedBy { it.key?.toInt() } // Sortierung nach Position
+                        .mapNotNull {
+                            val lizt = it.getValue(Lizt::class.java)
+                            lizt?.uid = it.key ?: ""
+                            lizt
+                        }
                     _lizts.value = lizts
                 }
 
@@ -50,21 +51,28 @@ class LiztViewModel : ViewModel() {
     }
 
     fun addLizt(liztName: String, hasSuggests: Boolean) {
-        val newPosition = _lizts.value.size
+        val nextPosition = _lizts.value.size
         val newLizt = Lizt(
             liztName = liztName,
-            hasSuggests = hasSuggests,
-            position = newPosition
+            hasSuggests = hasSuggests
         )
 
-        liztRef.push().setValue(newLizt)
+        // Speichern direkt unter "liztz/{nächstePosition}"
+        liztRef.child(nextPosition.toString()).setValue(newLizt)
     }
 
-    fun updateOrder(lizts: List<Lizt>) {
-        val updates = hashMapOf<String, Any>()
-        lizts.forEachIndexed { index, lizt ->
-            updates["/${lizt.uid}/position"] = index
+    fun updateOrder(newOrder: List<Lizt>) {
+        val updates = mutableMapOf<String, Any?>()
+        
+        newOrder.forEachIndexed { index, lizt ->
+            // Die UID wird beim Speichern entfernt, da sie dem Schlüssel entspricht
+            val liztData = lizt.copy(uid = "")
+            updates[index.toString()] = liztData
         }
-        liztRef.updateChildren(updates)
+
+        // Überschreibt den Knoten "liztz" mit der neuen flachen Struktur
+        liztRef.setValue(updates).addOnFailureListener {
+            Log.e("LiztViewModel", "updateOrder failed", it)
+        }
     }
 }
