@@ -2,12 +2,18 @@ package zzz.projects.liztzzz
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,7 +36,6 @@ import zzz.projects.liztzzz.data.LiztViewModel
 import zzz.projects.liztzzz.ui.theme.LiztzzTheme
 import kotlin.math.roundToInt
 
-// Hier geht's los
 class MainActivity : ComponentActivity() {
 
     private val viewModel: LiztViewModel by viewModels()
@@ -52,30 +57,53 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(auth: FirebaseAuth, viewModel: LiztViewModel) {
     var user by remember { mutableStateOf(auth.currentUser) }
+    var selectedLiztUid by remember { mutableStateOf<String?>(null) }
 
     if (user == null) {
         LoginScreen(auth = auth, onLoginSuccess = {
             user = auth.currentUser
         })
     } else {
-        LiztGridScreen(viewModel = viewModel) {
-            auth.signOut()
-            user = null
+        if (selectedLiztUid == null) {
+            LiztGridScreen(
+                viewModel = viewModel,
+                onLiztClick = { selectedLiztUid = it.uid },
+                onSignOut = {
+                    auth.signOut()
+                    user = null
+                }
+            )
+        } else {
+            val lizts by viewModel.lizts.collectAsState()
+            val selectedLizt = lizts.find { it.uid == selectedLiztUid }
+            if (selectedLizt != null) {
+                LiztDetailScreen(
+                    lizt = selectedLizt,
+                    onBack = { selectedLiztUid = null },
+                    onToggleChecked = { index, isChecked ->
+                        viewModel.updateLiztItemChecked(selectedLizt.uid, index, isChecked)
+                    }
+                )
+            } else {
+                selectedLiztUid = null
+            }
         }
     }
 }
 
 @Composable
-fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
+fun LiztGridScreen(
+    viewModel: LiztViewModel,
+    onLiztClick: (Lizt) -> Unit,
+    onSignOut: () -> Unit
+) {
     val lizts by viewModel.lizts.collectAsState()
     var orderedLizts by remember { mutableStateOf<List<Lizt>>(emptyList()) }
     
-    // Drag state
     var draggedLizt by remember { mutableStateOf<Lizt?>(null) }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
     
     val gridState = rememberLazyGridState()
-    // Stable reference to the current list for the gesture detector
     val currentOrderedLizts by rememberUpdatedState(orderedLizts)
 
     LaunchedEffect(lizts) {
@@ -109,12 +137,12 @@ fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
                         LiztCard(
                             lizt = lizt,
                             isBeingDragged = isBeingDragged,
+                            onClick = { onLiztClick(lizt) },
                             modifier = Modifier
                                 .graphicsLayer {
-                                    // Original bleibt unsichtbar solange draggedLizt gesetzt ist
                                     alpha = if (isBeingDragged) 0f else 1f
                                 }
-                                .pointerInput(Unit) { // Geste wird bei Listenänderung NICHT neu gestartet
+                                .pointerInput(Unit) {
                                     detectDragGesturesAfterLongPress(
                                         onDragStart = { _ ->
                                             draggedLizt = lizt
@@ -140,13 +168,11 @@ fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
 
                                             val draggedItemInfo = gridState.layoutInfo.visibleItemsInfo.find { it.key == currentDragged.uid } ?: return@detectDragGesturesAfterLongPress
                                             
-                                            // Mittelpunkt des Ghosts relativ zum Grid
                                             val ghostCenter = Offset(
                                                 x = draggedItemInfo.offset.x + draggedItemInfo.size.width / 2f + dragOffset.x,
                                                 y = draggedItemInfo.offset.y + draggedItemInfo.size.height / 2f + dragOffset.y
                                             )
 
-                                            // Hit-Test: Welches Element liegt unter dem Ghost-Zentrum?
                                             val targetItem = gridState.layoutInfo.visibleItemsInfo.find { item ->
                                                 ghostCenter.x in item.offset.x.toFloat()..(item.offset.x.toFloat() + item.size.width) &&
                                                 ghostCenter.y in item.offset.y.toFloat()..(item.offset.y.toFloat() + item.size.height)
@@ -155,7 +181,6 @@ fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
                                             if (targetItem != null && targetItem.key != currentDragged.uid) {
                                                 val targetIndex = list.indexOfFirst { it.uid == targetItem.key }
                                                 if (targetIndex != -1) {
-                                                    // Offset kompensieren, damit der Ghost nicht springt wenn das Original den Slot wechselt
                                                     val oldOffset = draggedItemInfo.offset
                                                     val targetOffset = targetItem.offset
                                                     
@@ -175,7 +200,6 @@ fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
                 }
             }
 
-            // Ghost Overlay (Bleibt aktiv bis draggedLizt null wird)
             draggedLizt?.let { lizt ->
                 val itemInfo = gridState.layoutInfo.visibleItemsInfo.find { it.key == lizt.uid }
                 if (itemInfo != null) {
@@ -190,7 +214,7 @@ fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
                             }
                             .width(with(density) { itemInfo.size.width.toDp() })
                             .height(with(density) { itemInfo.size.height.toDp() })
-                            .zIndex(1f) // Ghost immer ganz oben
+                            .zIndex(1f)
                             .graphicsLayer {
                                 alpha = 0.7f
                                 scaleX = 1.1f
@@ -198,7 +222,7 @@ fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
                                 shadowElevation = 12.dp.toPx()
                             }
                     ) {
-                        LiztCard(lizt = lizt, isBeingDragged = false)
+                        LiztCard(lizt = lizt, isBeingDragged = false, onClick = {})
                     }
                 }
             }
@@ -216,12 +240,93 @@ fun LiztGridScreen(viewModel: LiztViewModel, onSignOut: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LiztCard(lizt: Lizt, isBeingDragged: Boolean, modifier: Modifier = Modifier) {
+fun LiztDetailScreen(
+    lizt: Lizt,
+    onBack: () -> Unit,
+    onToggleChecked: (Int, Boolean) -> Unit
+) {
+    BackHandler(onBack = onBack)
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(lizt.liztName) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Row(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+        ) {
+            // Linke Hälfte: liztUnchecked
+            Column(modifier = Modifier.weight(1f)) {
+                val itemsWithOriginalIndex = lizt.liztUnchecked.mapIndexed { index, item -> index to item }
+                val sortedUnchecked = itemsWithOriginalIndex.sortedBy { it.second.isChecked }
+
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(sortedUnchecked, key = { it.second.itemName }) { (originalIndex, item) ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateItem()
+                                .clickable { onToggleChecked(originalIndex, !item.isChecked) }
+                                .padding(8.dp)
+                        ) {
+                            Checkbox(
+                                checked = item.isChecked,
+                                onCheckedChange = { onToggleChecked(originalIndex, it) }
+                            )
+                            Text(item.itemName)
+                        }
+                    }
+                }
+            }
+
+            VerticalDivider()
+
+            // Rechte Hälfte: liztSuggested
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Vorschläge",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(8.dp)
+                )
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(lizt.liztSuggested, key = { it.itemName }) { item ->
+                        Text(
+                            item.itemName,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LiztCard(
+    lizt: Lizt,
+    isBeingDragged: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(
         modifier = modifier
             .padding(8.dp)
             .fillMaxWidth()
+            .clickable(onClick = onClick)
     ) {
         Text(text = lizt.liztName, modifier = Modifier.padding(16.dp))
     }

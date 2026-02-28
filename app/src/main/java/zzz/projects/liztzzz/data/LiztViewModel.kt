@@ -3,7 +3,6 @@ package zzz.projects.liztzzz.data
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -19,8 +18,6 @@ class LiztViewModel : ViewModel() {
     val lizts = _lizts.asStateFlow()
 
     private val database: FirebaseDatabase = FirebaseDatabase.getInstance()
-    
-    // Die Referenz zeigt nun direkt auf den Root-Knoten "liztz"
     private val liztRef: DatabaseReference = database.getReference("liztz")
 
     init {
@@ -29,12 +26,11 @@ class LiztViewModel : ViewModel() {
 
     private fun loadLizts() {
         viewModelScope.launch {
-            // Wir laden die Daten direkt vom Root-Knoten "liztz"
             liztRef.addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val lizts = snapshot.children
-                        .filter { it.key?.toIntOrNull() != null } // Nur numerische Positions-Schlüssel
-                        .sortedBy { it.key?.toInt() } // Sortierung nach Position
+                        .filter { it.key?.toIntOrNull() != null }
+                        .sortedBy { it.key?.toInt() }
                         .mapNotNull {
                             val lizt = it.getValue(Lizt::class.java)
                             lizt?.uid = it.key ?: ""
@@ -56,23 +52,26 @@ class LiztViewModel : ViewModel() {
             liztName = liztName,
             hasSuggests = hasSuggests
         )
-
-        // Speichern direkt unter "liztz/{nächstePosition}"
         liztRef.child(nextPosition.toString()).setValue(newLizt)
     }
 
     fun updateOrder(newOrder: List<Lizt>) {
         val updates = mutableMapOf<String, Any?>()
-        
         newOrder.forEachIndexed { index, lizt ->
-            // Die UID wird beim Speichern entfernt, da sie dem Schlüssel entspricht
             val liztData = lizt.copy(uid = "")
             updates[index.toString()] = liztData
         }
-
-        // Überschreibt den Knoten "liztz" mit der neuen flachen Struktur
         liztRef.setValue(updates).addOnFailureListener {
             Log.e("LiztViewModel", "updateOrder failed", it)
+        }
+    }
+
+    fun updateLiztItemChecked(liztUid: String, itemIndex: Int, isChecked: Boolean) {
+        val lizt = _lizts.value.find { it.uid == liztUid } ?: return
+        val updatedUnchecked = lizt.liztUnchecked.toMutableList()
+        if (itemIndex in updatedUnchecked.indices) {
+            updatedUnchecked[itemIndex] = updatedUnchecked[itemIndex].copy(isChecked = isChecked)
+            liztRef.child(liztUid).child("liztUnchecked").setValue(updatedUnchecked)
         }
     }
 }
