@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,10 +22,13 @@ fun LiztDetailScreen(
     lizt: Lizt,
     onBack: () -> Unit,
     onToggleChecked: (Int, Boolean) -> Unit,
-    onAddItem: (String) -> Unit
+    onAddItem: (String) -> Unit,
+    onDeleteChecked: () -> Unit,
+    onToggleSuggests: () -> Unit
 ) {
     BackHandler(onBack = onBack)
     var newItemName by remember { mutableStateOf("") }
+    var showMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -33,6 +37,32 @@ fun LiztDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Einstellungen")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Abgehakte löschen") },
+                                onClick = {
+                                    onDeleteChecked()
+                                    showMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Vorschläge ein/aus") },
+                                onClick = {
+                                    onToggleSuggests()
+                                    showMenu = false
+                                }
+                            )
+                        }
                     }
                 }
             )
@@ -99,23 +129,25 @@ fun LiztDetailScreen(
                 }
             }
 
-            VerticalDivider()
+            if (lizt.hasSuggests) {
+                VerticalDivider()
 
-            // Rechte Hälfte: liztSuggested
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Vorschläge",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(8.dp)
-                )
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(lizt.liztSuggested, key = { it.itemName }) { item ->
-                        Text(
-                            item.itemName,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        )
+                // Rechte Hälfte: liztSuggested
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Vorschläge",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(lizt.liztSuggested, key = { it.itemName }) { item ->
+                            Text(
+                                item.itemName,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            )
+                        }
                     }
                 }
             }

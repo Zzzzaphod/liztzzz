@@ -82,4 +82,15 @@ class LiztViewModel : ViewModel() {
         updatedUnchecked.add(newItem)
         liztRef.child(liztUid).child("liztUnchecked").setValue(updatedUnchecked)
     }
+
+    fun deleteCheckedItems(liztUid: String) {
+        val lizt = _lizts.value.find { it.uid == liztUid } ?: return
+        val remainingItems = lizt.liztUnchecked.filter { !it.isChecked }
+        liztRef.child(liztUid).child("liztUnchecked").setValue(remainingItems)
+    }
+
+    fun toggleHasSuggests(liztUid: String) {
+        val lizt = _lizts.value.find { it.uid == liztUid } ?: return
+        liztRef.child(liztUid).child("hasSuggests").setValue(!lizt.hasSuggests)
+    }
 }

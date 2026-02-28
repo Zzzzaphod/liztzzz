@@ -64,6 +64,12 @@ fun MainScreen(auth: FirebaseAuth, viewModel: LiztViewModel) {
                     },
                     onAddItem = { itemName ->
                         viewModel.addLiztItem(selectedLizt.uid, itemName)
+                    },
+                    onDeleteChecked = {
+                        viewModel.deleteCheckedItems(selectedLizt.uid)
+                    },
+                    onToggleSuggests = {
+                        viewModel.toggleHasSuggests(selectedLizt.uid)
                     }
                 )
             } else {
