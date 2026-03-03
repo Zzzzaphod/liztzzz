@@ -19,6 +19,7 @@ class LiztViewModel : ViewModel() {
 
     private val database: FirebaseDatabase = FirebaseDatabase.getInstance()
     private val liztRef: DatabaseReference = database.getReference("liztz")
+    private val crashRef: DatabaseReference = database.getReference("crashes")
 
     init {
         loadLizts()
@@ -43,6 +44,16 @@ class LiztViewModel : ViewModel() {
                     Log.w("LiztViewModel", "loadLizts:onCancelled", error.toException())
                 }
             })
+        }
+    }
+
+    fun uploadCrashReport(report: String) {
+        val timestamp = System.currentTimeMillis()
+        crashRef.push().setValue(mapOf(
+            "timestamp" to timestamp,
+            "report" to report
+        )).addOnFailureListener {
+            Log.e("LiztViewModel", "Failed to upload crash report", it)
         }
     }
 
