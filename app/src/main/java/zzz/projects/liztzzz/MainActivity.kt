@@ -79,6 +79,9 @@ fun MainScreen(auth: FirebaseAuth, viewModel: LiztViewModel) {
                     },
                     onUncheckedLongClick = { item ->
                         viewModel.copyUncheckedToSuggested(selectedLizt.uid, item)
+                    },
+                    onRenameLizt = { newName ->
+                        viewModel.renameLizt(selectedLizt.uid, newName)
                     }
                 )
             } else {

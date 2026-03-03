@@ -120,7 +120,12 @@ class LiztViewModel : ViewModel() {
         
         if (updatedSuggested.none { it.itemName.trim().equals(trimmedName, ignoreCase = true) }) {
             updatedSuggested.add(item.copy(itemName = trimmedName, isChecked = false, isSuggest = true))
-            liztRef.child(liztUid).child("liztSuggested").setValue(updatedSuggested)
+            val sortedSuggested = updatedSuggested.sortedBy { it.itemName }
+            liztRef.child(liztUid).child("liztSuggested").setValue(sortedSuggested)
         }
+    }
+
+    fun renameLizt(liztUid: String, newName: String) {
+        liztRef.child(liztUid).child("liztName").setValue(newName)
     }
 }

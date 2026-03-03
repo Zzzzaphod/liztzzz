@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import zzz.projects.liztzzz.data.Lizt
 import zzz.projects.liztzzz.data.LiztItem
 
@@ -29,7 +30,8 @@ fun LiztDetailScreen(
     onToggleSuggests: () -> Unit,
     onSuggestedClick: (LiztItem) -> Unit,
     onSuggestedLongClick: (LiztItem) -> Unit,
-    onUncheckedLongClick: (LiztItem) -> Unit
+    onUncheckedLongClick: (LiztItem) -> Unit,
+    onRenameLizt: (String) -> Unit
 ) {
     BackHandler(onBack = onBack)
     var newItemName by remember { mutableStateOf("") }
@@ -37,6 +39,7 @@ fun LiztDetailScreen(
     
     var itemToDelete by remember { mutableStateOf<LiztItem?>(null) }
     var itemToSuggest by remember { mutableStateOf<LiztItem?>(null) }
+    var showRenameDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -67,6 +70,13 @@ fun LiztDetailScreen(
                                 text = { Text("Vorschläge ein/aus") },
                                 onClick = {
                                     onToggleSuggests()
+                                    showMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Listennamen ändern") },
+                                onClick = {
+                                    showRenameDialog = true
                                     showMenu = false
                                 }
                             )
@@ -212,5 +222,66 @@ fun LiztDetailScreen(
                 }
             }
         )
+    }
+
+    // Listennamen ändern Dialog
+    if (showRenameDialog) {
+        RenameLiztDialog(
+            currentName = lizt.liztName,
+            onDismiss = { showRenameDialog = false },
+            onConfirm = { newName ->
+                onRenameLizt(newName)
+                showRenameDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun RenameLiztDialog(currentName: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var newName by remember { mutableStateOf(currentName) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Listennamen ändern",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    label = { Text("Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Abbrechen")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { if (newName.isNotBlank()) onConfirm(newName) },
+                        enabled = newName.isNotBlank()
+                    ) {
+                        Text("Übernehmen")
+                    }
+                }
+            }
+        }
     }
 }
