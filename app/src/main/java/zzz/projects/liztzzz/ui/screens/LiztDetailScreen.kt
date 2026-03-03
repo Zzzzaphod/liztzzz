@@ -151,7 +151,8 @@ fun LiztDetailScreen(
                         modifier = Modifier.padding(8.dp)
                     )
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(lizt.liztSuggested, key = { it.itemName }) { item ->
+                        val sortedSuggested = lizt.liztSuggested.sortedBy { it.itemName }
+                        items(sortedSuggested, key = { it.itemName }) { item ->
                             Text(
                                 item.itemName,
                                 modifier = Modifier
