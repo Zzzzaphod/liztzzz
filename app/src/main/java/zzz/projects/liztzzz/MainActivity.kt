@@ -82,6 +82,9 @@ fun MainScreen(auth: FirebaseAuth, viewModel: LiztViewModel) {
                     },
                     onRenameLizt = { newName ->
                         viewModel.renameLizt(selectedLizt.uid, newName)
+                    },
+                    onColorSelected = { colorHex ->
+                        viewModel.updateLiztColor(selectedLizt.uid, colorHex)
                     }
                 )
             } else {

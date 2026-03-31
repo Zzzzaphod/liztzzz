@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -176,13 +177,26 @@ fun LiztCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val cardColor = remember(lizt.color) {
+        try {
+            Color(android.graphics.Color.parseColor(lizt.color))
+        } catch (e: Exception) {
+            Color.White
+        }
+    }
+
     Card(
+        colors = CardDefaults.cardColors(containerColor = cardColor),
         modifier = modifier
             .padding(8.dp)
             .fillMaxWidth()
             .clickable(onClick = onClick)
     ) {
-        Text(text = lizt.liztName, modifier = Modifier.padding(16.dp))
+        Text(
+            text = lizt.liztName,
+            color = Color.Black,
+            modifier = Modifier.padding(16.dp)
+        )
     }
 }
 

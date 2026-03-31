@@ -2,10 +2,14 @@ package zzz.projects.liztzzz.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -14,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import zzz.projects.liztzzz.data.Lizt
@@ -31,7 +36,8 @@ fun LiztDetailScreen(
     onSuggestedClick: (LiztItem) -> Unit,
     onSuggestedLongClick: (LiztItem) -> Unit,
     onUncheckedLongClick: (LiztItem) -> Unit,
-    onRenameLizt: (String) -> Unit
+    onRenameLizt: (String) -> Unit,
+    onColorSelected: (String) -> Unit
 ) {
     BackHandler(onBack = onBack)
     var newItemName by remember { mutableStateOf("") }
@@ -40,20 +46,30 @@ fun LiztDetailScreen(
     var itemToDelete by remember { mutableStateOf<LiztItem?>(null) }
     var itemToSuggest by remember { mutableStateOf<LiztItem?>(null) }
     var showRenameDialog by remember { mutableStateOf(false) }
+    var showColorPicker by remember { mutableStateOf(false) }
+
+    val titleColor = remember(lizt.color) {
+        try {
+            Color(android.graphics.Color.parseColor(lizt.color))
+        } catch (e: Exception) {
+            Color.White
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(lizt.liztName) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = titleColor),
+                title = { Text(lizt.liztName, color = Color.Black) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.Black)
                     }
                 },
                 actions = {
                     Box {
                         IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Einstellungen")
+                            Icon(Icons.Default.MoreVert, contentDescription = "Einstellungen", tint = Color.Black)
                         }
                         DropdownMenu(
                             expanded = showMenu,
@@ -77,6 +93,13 @@ fun LiztDetailScreen(
                                 text = { Text("Listennamen ändern") },
                                 onClick = {
                                     showRenameDialog = true
+                                    showMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Farbe...") },
+                                onClick = {
+                                    showColorPicker = true
                                     showMenu = false
                                 }
                             )
@@ -234,6 +257,67 @@ fun LiztDetailScreen(
                 showRenameDialog = false
             }
         )
+    }
+
+    // Color Picker Dialog
+    if (showColorPicker) {
+        ColorPickerDialog(
+            onDismiss = { showColorPicker = false },
+            onColorSelected = { colorHex ->
+                onColorSelected(colorHex)
+                showColorPicker = false
+            }
+        )
+    }
+}
+
+@Composable
+fun ColorPickerDialog(onDismiss: () -> Unit, onColorSelected: (String) -> Unit) {
+    val colors = listOf(
+        "#FFFFFFFF", // White
+        "#FFEF9A9A", // Red 200
+        "#FFA5D6A7", // Green 200
+        "#FF90CAF9", // Blue 200
+        "#FFFFE082", // Amber 200
+        "#FFCE93D8"  // Purple 200
+    )
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Farbe wählen",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    colors.forEach { colorHex ->
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    Color(android.graphics.Color.parseColor(colorHex)),
+                                    CircleShape
+                                )
+                                .border(1.dp, Color.Gray, CircleShape)
+                                .clickable { onColorSelected(colorHex) }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                TextButton(onClick = onDismiss) {
+                    Text("Abbrechen")
+                }
+            }
+        }
     }
 }
 

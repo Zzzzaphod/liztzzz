@@ -13,5 +13,6 @@ data class Lizt(
     var liztSuggested: List<LiztItem> = emptyList(),
     var liztUnchecked: List<LiztItem> = emptyList(),
     var liztChecked: List<LiztItem> = emptyList(),
-    var showUnchecked: Boolean = true
+    var showUnchecked: Boolean = true,
+    var color: String = "#FFFFFFFF" // Default to white
 )

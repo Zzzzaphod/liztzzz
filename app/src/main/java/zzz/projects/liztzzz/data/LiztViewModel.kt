@@ -139,4 +139,8 @@ class LiztViewModel : ViewModel() {
     fun renameLizt(liztUid: String, newName: String) {
         liztRef.child(liztUid).child("liztName").setValue(newName)
     }
+
+    fun updateLiztColor(liztUid: String, color: String) {
+        liztRef.child(liztUid).child("color").setValue(color)
+    }
 }
