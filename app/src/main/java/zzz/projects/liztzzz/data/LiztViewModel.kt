@@ -143,4 +143,12 @@ class LiztViewModel : ViewModel() {
     fun updateLiztColor(liztUid: String, color: String) {
         liztRef.child(liztUid).child("color").setValue(color)
     }
+
+    fun deleteLizt(liztUid: String) {
+        // Since we are using numeric keys representing positions, deleting one might mess up the order logic if we just remove a node.
+        // However, the current logic in updateOrder suggests we can overwrite the whole "liztz" node.
+        val currentLizts = _lizts.value
+        val updatedLizts = currentLizts.filter { it.uid != liztUid }
+        updateOrder(updatedLizts)
+    }
 }

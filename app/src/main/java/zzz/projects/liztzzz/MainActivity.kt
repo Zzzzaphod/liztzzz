@@ -85,6 +85,10 @@ fun MainScreen(auth: FirebaseAuth, viewModel: LiztViewModel) {
                     },
                     onColorSelected = { colorHex ->
                         viewModel.updateLiztColor(selectedLizt.uid, colorHex)
+                    },
+                    onDeleteLizt = {
+                        viewModel.deleteLizt(selectedLizt.uid)
+                        selectedLiztUid = null
                     }
                 )
             } else {

@@ -37,7 +37,8 @@ fun LiztDetailScreen(
     onSuggestedLongClick: (LiztItem) -> Unit,
     onUncheckedLongClick: (LiztItem) -> Unit,
     onRenameLizt: (String) -> Unit,
-    onColorSelected: (String) -> Unit
+    onColorSelected: (String) -> Unit,
+    onDeleteLizt: () -> Unit
 ) {
     BackHandler(onBack = onBack)
     var newItemName by remember { mutableStateOf("") }
@@ -47,6 +48,7 @@ fun LiztDetailScreen(
     var itemToSuggest by remember { mutableStateOf<LiztItem?>(null) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showColorPicker by remember { mutableStateOf(false) }
+    var showDeleteLiztDialog by remember { mutableStateOf(false) }
 
     val titleColor = remember(lizt.color) {
         try {
@@ -57,6 +59,7 @@ fun LiztDetailScreen(
     }
 
     Scaffold(
+        containerColor = Color.White, // Force light background for visibility
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = titleColor),
@@ -103,6 +106,13 @@ fun LiztDetailScreen(
                                     showMenu = false
                                 }
                             )
+                            DropdownMenuItem(
+                                text = { Text("Löschen", color = Color.Red) },
+                                onClick = {
+                                    showDeleteLiztDialog = true
+                                    showMenu = false
+                                }
+                            )
                         }
                     }
                 }
@@ -110,6 +120,7 @@ fun LiztDetailScreen(
         },
         bottomBar = {
             BottomAppBar(
+                containerColor = Color.White,
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 modifier = Modifier.height(IntrinsicSize.Min)
             ) {
@@ -122,7 +133,15 @@ fun LiztDetailScreen(
                         onValueChange = { newItemName = it },
                         modifier = Modifier.weight(1f),
                         placeholder = { Text("Neues Element...") },
-                        singleLine = true
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black,
+                            focusedBorderColor = Color.Black,
+                            unfocusedBorderColor = Color.Black.copy(alpha = 0.6f),
+                            focusedPlaceholderColor = Color.Gray,
+                            unfocusedPlaceholderColor = Color.Gray
+                        )
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(
@@ -134,7 +153,7 @@ fun LiztDetailScreen(
                         },
                         enabled = newItemName.isNotBlank()
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Item")
+                        Icon(Icons.Default.Add, contentDescription = "Add Item", tint = if (newItemName.isNotBlank()) Color.Black else Color.Gray)
                     }
                 }
             }
@@ -165,22 +184,28 @@ fun LiztDetailScreen(
                         ) {
                             Checkbox(
                                 checked = item.isChecked,
-                                onCheckedChange = { onToggleChecked(originalIndex, it) }
+                                onCheckedChange = { onToggleChecked(originalIndex, it) },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = Color.Black,
+                                    uncheckedColor = Color.Black,
+                                    checkmarkColor = Color.White
+                                )
                             )
-                            Text(item.itemName)
+                            Text(item.itemName, color = Color.Black)
                         }
                     }
                 }
             }
 
             if (lizt.hasSuggests) {
-                VerticalDivider()
+                VerticalDivider(color = Color.Black.copy(alpha = 0.2f))
 
                 // Rechte Hälfte: liztSuggested
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         "Vorschläge",
                         style = MaterialTheme.typography.titleMedium,
+                        color = Color.Black,
                         modifier = Modifier.padding(8.dp)
                     )
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -188,6 +213,7 @@ fun LiztDetailScreen(
                         items(sortedSuggested, key = { it.itemName }) { item ->
                             Text(
                                 item.itemName,
+                                color = Color.Black,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .combinedClickable(
@@ -266,6 +292,31 @@ fun LiztDetailScreen(
             onColorSelected = { colorHex ->
                 onColorSelected(colorHex)
                 showColorPicker = false
+            }
+        )
+    }
+
+    // Liste löschen Dialog
+    if (showDeleteLiztDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteLiztDialog = false },
+            title = { Text("Liste löschen") },
+            text = { Text("Möchten Sie die Liste '${lizt.liztName}' wirklich unwiderruflich löschen?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteLizt()
+                        showDeleteLiztDialog = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                ) {
+                    Text("Endgültig löschen")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteLiztDialog = false }) {
+                    Text("Abbrechen")
+                }
             }
         )
     }
