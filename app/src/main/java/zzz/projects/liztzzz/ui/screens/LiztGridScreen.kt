@@ -110,16 +110,38 @@ fun LiztGridScreen(
 
                                             if (targetItem != null && targetItem.key != currentDragged.uid) {
                                                 val targetIndex = list.indexOfFirst { it.uid == targetItem.key }
-                                                if (targetIndex != -1) {
+
+
+                                                if (targetIndex != -1 && targetIndex != currentDraggedIndex) {
+                                                    val mutableLizts = list.toMutableList()
+
+                                                    // Das Element entfernen und am Zielindex einfügen
+                                                    // Kotlin's MutableList.add(index, element) kümmert sich um das Verschieben,
+                                                    // aber wir müssen sicherstellen, dass wir nicht "neben" das Ziel zielen.
+                                                    val item = mutableLizts.removeAt(currentDraggedIndex)
+                                                    mutableLizts.add(targetIndex, item)
+
+                                                    // Das Offset muss sofort angepasst werden, damit das Item nicht "springt"
                                                     val oldOffset = draggedItemInfo.offset
                                                     val targetOffset = targetItem.offset
-                                                    
                                                     dragOffset += Offset((oldOffset.x - targetOffset.x).toFloat(), (oldOffset.y - targetOffset.y).toFloat())
 
-                                                    val mutableLizts = list.toMutableList()
-                                                    mutableLizts.removeAt(currentDraggedIndex)
-                                                    mutableLizts.add(targetIndex, currentDragged)
                                                     orderedLizts = mutableLizts
+
+
+                                                // --------- alte Version mit Drag-and-Drop-Fehler
+                                                //if (targetIndex != -1) {
+                                                //val oldOffset = draggedItemInfo.offset
+                                                //    val targetOffset = targetItem.offset
+                                                    
+                                                //    dragOffset += Offset((oldOffset.x - targetOffset.x).toFloat(), (oldOffset.y - targetOffset.y).toFloat())
+
+                                                //    val mutableLizts = list.toMutableList()
+                                                //    mutableLizts.removeAt(currentDraggedIndex)
+                                                //    mutableLizts.add(targetIndex, currentDragged)
+
+
+                                                //    orderedLizts = mutableLizts
                                                 }
                                             }
                                         }
