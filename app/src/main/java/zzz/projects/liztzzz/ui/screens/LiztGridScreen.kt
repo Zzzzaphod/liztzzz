@@ -129,19 +129,6 @@ fun LiztGridScreen(
                                                     orderedLizts = mutableLizts
 
 
-                                                // --------- alte Version mit Drag-and-Drop-Fehler
-                                                //if (targetIndex != -1) {
-                                                //val oldOffset = draggedItemInfo.offset
-                                                //    val targetOffset = targetItem.offset
-                                                    
-                                                //    dragOffset += Offset((oldOffset.x - targetOffset.x).toFloat(), (oldOffset.y - targetOffset.y).toFloat())
-
-                                                //    val mutableLizts = list.toMutableList()
-                                                //    mutableLizts.removeAt(currentDraggedIndex)
-                                                //    mutableLizts.add(targetIndex, currentDragged)
-
-
-                                                //    orderedLizts = mutableLizts
                                                 }
                                             }
                                         }
